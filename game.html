@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>色块点击小游戏</title>
+  <link href="https://fonts.googleapis.com/css?family=Montserrat:700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg,#a8edea 0%,#fed6e3 100%);
+      font-family: 'Montserrat', sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      flex-direction: column;
+      justify-content: center;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 8px;
+      letter-spacing: 2px;
+      text-shadow: 1px 2px 8px #fff6;
+    }
+    .game-container {
+      background: #fff5;
+      border-radius: 18px;
+      box-shadow: 0 8px 24px #aaa3;
+      padding: 32px 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .score {
+      font-size: 1.4em;
+      color: #666;
+      margin-bottom: 12px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 60px);
+      grid-gap: 16px;
+      margin-bottom: 24px;
+    }
+    .block {
+      width: 60px;
+      height: 60px;
+      border-radius: 10px;
+      box-shadow: 0 3px 8px #3332;
+      cursor: pointer;
+      transition: transform 0.08s;
+      border: 3px solid transparent;
+      background: #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #fff;
+      user-select: none;
+    }
+    .block:active {
+      transform: scale(0.95);
+      border-color: #ff6bcb;
+    }
+    .target {
+      box-shadow: 0 0 0 3px #000;
+      border-color: #000 !important;
+    }
+    .btn {
+      background: linear-gradient(90deg,#43e97b 0%,#38f9d7 100%);
+      color: #fff;
+      font-weight: bold;
+      border: none;
+      font-size: 1em;
+      padding: 10px 28px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+      box-shadow: 0 2px 10px #2be3a555;
+      margin-top: 8px;
+    }
+    .btn:hover {
+      background: linear-gradient(90deg,#38f9d7 0%,#43e97b 100%);
+    }
+    .timer {
+      font-size: 1.1em;
+      color: #000;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .input-time {
+      width: 60px;
+      padding: 6px 10px;
+      border-radius: 7px;
+      border: 1px solid #aaa;
+      font-size: 1em;
+      text-align: center;
+      margin-right: 8px;
+    }
+    .game-desc {
+      color: #000;
+      font-size: 1em;
+      background: #fff8;
+      border-radius: 9px;
+      padding: 10px 20px;
+      margin-bottom: 18px;
+      text-align: left;
+      box-shadow: 0 2px 8px #aaa2;
+      max-width: 370px;
+      line-height: 1.6;
+      transition: opacity 0.2s;
+    }
+    .game-desc.hide {
+      opacity: 0;
+      pointer-events: none;
+      height: 0;
+      margin-bottom: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    @media (max-width: 600px) {
+      .game-container {padding:16px;}
+      .grid {grid-template-columns: repeat(4, 40px);}
+      .block {width:40px;height:40px;font-size:1em;}
+      .input-time {width:38px;}
+      .game-desc {padding:8px 12px;font-size:0.95em;max-width:90vw;}
+    }
+  </style>
+</head>
+<body>
+  <h1>色块点击小游戏</h1>
+  <div class="game-container">
+    <div class="game-desc" id="gameDesc">
+      游戏说明：<br>
+      - 点击“开始”键后，游戏正式启动。<br>
+      - 你可以自由设置倒计时时间（5~300秒）。<br>
+      - 游戏中会出现16个色块，请迅速点击带有黑色边框的目标色块。<br>
+      - 点击正确得1分，点击错误扣1分。<br>
+      - 倒计时结束游戏自动停止，点击“重新开始”可重置游戏。<br>
+      - 挑战你的手速和观察力吧！
+    </div>
+    <div class="controls">
+      <label for="inputTime">时间(秒):</label>
+      <input type="number" class="input-time" id="inputTime" min="5" max="300" value="30" />
+      <button class="btn" id="startBtn">开始</button>
+      <button class="btn" id="restartBtn" style="display:none;">重新开始</button>
+    </div>
+    <div class="timer" id="timer">剩余时间: --</div>
+    <div class="score" id="score">得分: 0</div>
+    <div class="grid" id="grid"></div>
+  </div>
+  <script>
+    const COLORS = ["#ff6bcb","#43e97b","#38f9d7","#a8edea","#fed6e3","#ffc3a0","#fcb69f","#b2fefa","#fad0c4"];
+    const grid = document.getElementById('grid');
+    const scoreEl = document.getElementById('score');
+    const timerEl = document.getElementById('timer');
+    const startBtn = document.getElementById('startBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const inputTime = document.getElementById('inputTime');
+    const gameDesc = document.getElementById('gameDesc');
+    let score = 0, time = 30, timer, targetIdx = 0, gameActive = false, setTime = 30;
+    let startTimestamp = 0, endTimestamp = 0;
+
+    function pickColors(n) {
+      let arr = [];
+      while(arr.length<n){
+        let c = COLORS[Math.floor(Math.random()*COLORS.length)];
+        if(!arr.includes(c)) arr.push(c);
+      }
+      return arr;
+    }
+
+    function setupGrid() {
+      grid.innerHTML = '';
+      let colors = pickColors(8);
+      let blocks = [];
+      for(let i=0;i<8;i++){
+        blocks.push({color:colors[i], idx:i});
+      }
+      blocks = [...blocks, ...blocks].sort(()=>Math.random()-0.5);
+      blocks.forEach((b,i)=>{
+        let div = document.createElement('div');
+        div.className = 'block';
+        div.style.background = b.color;
+        div.dataset.idx = i;
+        grid.appendChild(div);
+      });
+      targetIdx = Math.floor(Math.random()*16);
+      grid.children[targetIdx].classList.add('target');
+
+      Array.from(grid.children).forEach(b=>{
+        b.onclick = function(){
+          if(!gameActive || time<=0) return;
+          if(+this.dataset.idx === targetIdx){
+            score++;
+            scoreEl.textContent = `得分: ${score}`;
+            setupGrid();
+          }else{
+            this.style.opacity = '0.5';
+            setTimeout(()=>{this.style.opacity='1';},400);
+            score = Math.max(0,score-1);
+            scoreEl.textContent = `得分: ${score}`;
+          }
+        }
+        b.style.pointerEvents = 'auto';
+      });
+    }
+
+    function formatTime(t) {
+      return t < 0 ? "0.00" : t.toFixed(2);
+    }
+
+    function startGame() {
+      setTime = parseInt(inputTime.value) || 30;
+      if(setTime < 5) setTime = 5;
+      if(setTime > 300) setTime = 300;
+      inputTime.value = setTime;
+      score = 0;
+      time = setTime;
+      gameActive = true;
+      scoreEl.textContent = '得分: 0';
+      timerEl.textContent = `剩余时间: ${formatTime(time)}s`;
+      setupGrid();
+      startBtn.style.display = 'none';
+      restartBtn.style.display = 'inline-block';
+      inputTime.disabled = true;
+      gameDesc.classList.add('hide');
+      if(timer) clearInterval(timer);
+
+      startTimestamp = performance.now();
+      endTimestamp = startTimestamp + setTime * 1000;
+
+      timer = setInterval(()=>{
+        let now = performance.now();
+        let left = (endTimestamp - now) / 1000;
+        time = left;
+        if(left <= 0) {
+          timerEl.textContent = '游戏结束！';
+          clearInterval(timer);
+          gameActive = false;
+          Array.from(grid.children).forEach(b=>b.style.pointerEvents='none');
+        } else {
+          timerEl.textContent = `剩余时间: ${formatTime(left)}s`;
+        }
+      }, 10);
+    }
+
+    function restartGame() {
+      gameActive = false;
+      if(timer) clearInterval(timer);
+      score = 0;
+      scoreEl.textContent = '得分: 0';
+      timerEl.textContent = '剩余时间: --';
+      grid.innerHTML = '';
+      startBtn.style.display = 'inline-block';
+      restartBtn.style.display = 'none';
+      inputTime.disabled = false;
+      gameDesc.classList.remove('hide');
+    }
+
+    startBtn.onclick = startGame;
+    restartBtn.onclick = restartGame;
+
+    // 初始状态
+    restartGame();
+  </script>
+</body>
+</html>
